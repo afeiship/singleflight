@@ -1,6 +1,6 @@
 {
   "name": "@jswork/singleflight",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Single flight pattern for TypeScript, deduplicate concurrent requests.",
   "npmClient": "pnpm",
