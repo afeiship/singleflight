@@ -1,0 +1,150 @@
+# @jswork/singleflight
+
+> A lightweight TypeScript implementation of the SingleFlight pattern — deduplicates concurrent async calls sharing the same key so only one execution runs and all callers share the same Promise.
+
+This library exports a single generic class `SingleFlight<T>` with one method `run(key, fn)`. When multiple callers invoke `run` with an identical key before the first call settles, only the first invocation executes the provided factory function — every subsequent caller receives the same pending Promise. Once the Promise settles (resolves or rejects) the key is automatically removed so future calls trigger a fresh execution.
+
+**Important notes for agents:**
+- This is a zero-dependency, runtime-agnostic library (works in browser, Node.js, Bun, Deno).
+- The class is generic — always parameterize it with the return type: `new SingleFlight<MyType>()`.
+- The `run` method signature: `run(key: string, fn: () => Promise<T>): Promise<T>`.
+- Key cleanup happens in a `.finally()` callback — keys are removed after both resolve and reject.
+- If `fn` throws synchronously, the error propagates immediately and no key is leaked.
+- Use this for: token refresh deduplication, cache stampede prevention, duplicate API request suppression, and any scenario where concurrent callers need the same async result.
+
+## Installation
+
+```bash
+npm install @jswork/singleflight
+# or
+yarn add @jswork/singleflight
+```
+
+## Quick Start
+
+```typescript
+import SingleFlight from '@jswork/singleflight';
+
+const sf = new SingleFlight<string>();
+
+// Concurrent dedup: same key executes only once
+const result = await sf.run('user:1', () => fetch('/api/user/1').then(r => r.json()));
+```
+
+## API Reference
+
+### `class SingleFlight<T>`
+
+| Member | Signature | Description |
+|--------|-----------|-------------|
+| `run` | `(key: string, fn: () => Promise<T>) => Promise<T>` | Execute `fn` once per key; concurrent callers share the same Promise. Auto-cleans the key after settle. |
+
+#### How it works internally
+
+1. `run('my-key', fn)` checks if a Promise already exists for `'my-key'`.
+2. If yes → returns the existing Promise (no new execution).
+3. If no → calls `fn()`, stores the resulting Promise, and returns it.
+4. When the Promise settles → the `'my-key'` entry is automatically removed from the internal Map.
+
+## Real-World Example: Token Refresh
+
+When multiple requests hit a 401 at the same time, you only want one refresh call — the rest share the same Promise.
+
+```typescript
+import SingleFlight from '@jswork/singleflight';
+
+const sf = new SingleFlight<string>();
+let token = '';
+
+async function refreshToken(): Promise<string> {
+  return sf.run('refresh-token', async () => {
+    const res = await fetch('/api/refresh-token', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    token = data.token;
+    return token;
+  });
+}
+
+async function request(url: string, options?: RequestInit) {
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...options?.headers, Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 401) {
+    const newToken = await refreshToken();
+    return fetch(url, {
+      ...options,
+      headers: { ...options?.headers, Authorization: `Bearer ${newToken}` },
+    });
+  }
+
+  return res;
+}
+```
+
+## Common Patterns
+
+### Cache Stampede Prevention
+
+```typescript
+const sf = new SingleFlight<Data>();
+
+async function getData(id: string): Promise<Data> {
+  return sf.run(`data:${id}`, async () => {
+    const cached = cache.get(id);
+    if (cached) return cached;
+    const data = await fetchFromDB(id);
+    cache.set(id, data);
+    return data;
+  });
+}
+```
+
+### Multiple Independent Keys
+
+```typescript
+const sf = new SingleFlight<User>();
+
+// Different keys are fully isolated — no interference
+const [user1, user2] = await Promise.all([
+  sf.run('user:1', () => fetchUser('1')),
+  sf.run('user:2', () => fetchUser('2')),
+]);
+```
+
+## Source Code
+
+- [SingleFlight implementation](src/index.ts): The complete implementation — a single class with a `Map<string, Promise<T>>` and the `run` method.
+
+## Tests
+
+- [Core tests](__tests__/index.spec.ts): Covers basic dedup, key isolation, re-entry after resolve/reject, error propagation to all callers, map cleanup, and sync factory throw handling.
+- [Refresh token scenario](__tests__/refresh-token.spec.ts): Real-world test simulating concurrent 401s triggering a single token refresh, re-refresh after token expiry, and error propagation to all waiting requests.
+
+## Build & Test
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build (tsup)
+pnpm build
+
+# Run tests (bun test)
+pnpm test
+```
+
+## Project Files
+
+- [package.json](package.json): Project metadata, scripts, and npm configuration.
+- [tsconfig.json](tsconfig.json): TypeScript compiler configuration.
+- [tsup.config.ts](tsup.config.ts): Build configuration (ESM + CJS output).
+- [LICENSE.txt](LICENSE.txt): MIT License.
+
+## Optional
+
+- [Design spec](docs/superpowers/specs/2026-04-10-singleflight-test-and-docs-design.md): Original design document for test and documentation structure.
