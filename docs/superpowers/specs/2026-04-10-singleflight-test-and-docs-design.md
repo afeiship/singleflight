@@ -7,7 +7,7 @@ Keep `src/index.ts` unchanged. Add comprehensive tests and fix the README usage 
 ## Scope
 
 - **No source code changes** — the 15-line `SingleFlight<T>` class is correct as-is.
-- **Add tests** — cover core deduplication behavior in `__tests__/index.spec.ts`.
+- **Replace tests** — replace the existing placeholder test in `__tests__/index.spec.ts` with comprehensive coverage using Bun's built-in test runner (Jest-compatible `describe`/`test` syntax).
 - **Fix README** — replace the incorrect usage example with a valid one.
 
 ## Test Cases
@@ -20,6 +20,7 @@ Keep `src/index.ts` unchanged. Add comprehensive tests and fix the README usage 
 | 3.2 | Re-entry after reject | After promise rejects, calling `run` with same key re-executes factory |
 | 4 | Error propagation | Factory throws, all callers waiting on same key receive same rejection |
 | 5 | Map cleanup | After promise settles, key is removed from internal Map |
+| 6 | Sync factory throw | Factory throws synchronously, error propagates and no key leaks in Map |
 
 ## README Fix
 
@@ -31,5 +32,9 @@ import SingleFlight from '@jswork/singleflight';
 const sf = new SingleFlight<string>();
 
 // Concurrent dedup: same key executes only once
-const result = await sf.run('user:1', () => fetchUser('1'));
+const result = await sf.run('user:1', () => fetch('/api/user/1').then(r => r.json()));
 ```
+
+## Acceptance Criteria
+
+- All tests pass via `bun test`
