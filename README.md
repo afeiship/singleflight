@@ -70,8 +70,5 @@ Code released under [the MIT license](https://github.com/afeiship/singleflight/b
 [license-image]: https://img.shields.io/npm/l/@jswork/singleflight
 [license-url]: https://github.com/afeiship/singleflight/blob/main/LICENSE.txt
 
-[size-image]: https://img.shields.io/bundlephobia/minzip/@jswork/singleflight
-[size-url]: https://github.com/afeiship/singleflight/blob/main/dist/singleflight.min.js
-
 [download-image]: https://img.shields.io/npm/dm/@jswork/singleflight
 [download-url]: https://www.npmjs.com/package/@jswork/singleflight
