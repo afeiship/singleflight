@@ -1,7 +1,3 @@
-// 1-9
-// quotient 商
-// remainder 余数
-
 export default class SingleFlight<T> {
   private promises = new Map<string, Promise<T>>();
 

@@ -12,12 +12,13 @@ yarn add @jswork/singleflight
 ```
 
 ## usage
-```js
+```typescript
 import SingleFlight from '@jswork/singleflight';
 
-SingleFlight(1024);
+const sf = new SingleFlight<string>();
 
-// [1000, 0, 20, 4]
+// Concurrent dedup: same key executes only once
+const result = await sf.run('user:1', () => fetch('/api/user/1').then(r => r.json()));
 ```
 
 ## license
