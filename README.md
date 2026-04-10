@@ -3,7 +3,6 @@
 
 [![version][version-image]][version-url]
 [![license][license-image]][license-url]
-[![size][size-image]][size-url]
 [![download][download-image]][download-url]
 
 ## installation
